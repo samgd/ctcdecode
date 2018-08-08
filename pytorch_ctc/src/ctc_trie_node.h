@@ -25,6 +25,8 @@ namespace ctc {
 
 class TrieNode {
 public:
+  static const int MAGIC = 'TRIE';
+  static const int FILE_VERSION = 1;
   TrieNode(int vocab_size) : vocab_size(vocab_size),
                         prefixCount(0),
                         min_score_word(0),
@@ -52,6 +54,37 @@ public:
   }
 
   static void ReadFromStream(std::istream& is, TrieNode* &obj, int vocab_size) {
+    int magic;
+    is >> magic;
+    if (magic != MAGIC) {
+      std::cerr << "Error: Can't parse trie file, invalid header. Try updating "
+                   "your trie file." << std::endl;
+      obj = nullptr;
+      return;
+    }
+
+    int version;
+    is >> version;
+    if (version != FILE_VERSION) {
+      std::cerr << "Error: Trie file version mismatch. Update your trie file."
+                << std::endl;
+      obj = nullptr;
+      return;
+    }
+
+    int fileVocabSize;
+    is >> fileVocabSize;
+    if (fileVocabSize != vocab_size) {
+      std::cerr << "Error: Mismatching alphabet size in trie file and alphabet "
+                   "file. Trie file will not be loaded." << std::endl;
+      obj = nullptr;
+      return;
+    }
+
+    ReadPrefixAndNode(is, obj, vocab_size);
+  }
+
+  static void ReadPrefixAndNode(std::istream& is, TrieNode* &obj, int vocab_size) {
     int prefixCount;
     is >> prefixCount;
 
@@ -65,7 +98,7 @@ public:
     obj->ReadNode(is, prefixCount);
     for (int i = 0; i < vocab_size; i++) {
       // Recursive call
-      ReadFromStream(is, obj->children[i], vocab_size);
+      ReadPrefixAndNode(is, obj->children[i], vocab_size);
     }
   }
 
