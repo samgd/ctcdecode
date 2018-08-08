@@ -67,6 +67,9 @@ namespace ctc_beam_search {
       in.open(trie_path, std::ios::in);
       TrieNode::ReadFromStream(in, trieRoot, labels->GetSize());
       in.close();
+
+      Model::State out;
+      oov_score_ = model->FullScore(model->NullContextState(), model->GetVocabulary().NotFound(), out).prob;
     }
 
     // State initialization.
@@ -90,9 +93,8 @@ namespace ctc_beam_search {
         to_state->incomplete_word += labels->GetCharacter(to_label);
         TrieNode *trie_node = from_state.incomplete_word_trie_node;
 
-        // TODO replace with OOV unigram prob?
         // If we have no valid prefix we assume a very low log probability
-        float min_unigram_score = -10.0f;
+        float min_unigram_score = oov_score_;
         // If prefix does exist
         if (trie_node != nullptr) {
           trie_node = trie_node->GetChildAt(to_label);
@@ -178,6 +180,7 @@ namespace ctc_beam_search {
     float lm_weight;
     float word_count_weight;
     float valid_word_count_weight;
+    float oov_score_;
 
     void UpdateWithLMScore(KenLMBeamState *state, float lm_score_delta) const {
       float previous_score = state->score;
